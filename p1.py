@@ -34,13 +34,14 @@ def min_net(costs, demands, net):
 
 # module 3
 def show(densities, net, total_costs):
-    plt.plot(total_costs)
+    x = np.arange(test_min_r, test_max_r)
+    plt.plot(x, total_costs[test_min_r:test_max_r])
     plt.xlabel('k')
     plt.ylabel('Total Cost')
     plt.savefig('costs.png')
     plt.clf()
 
-    plt.plot(densities)
+    plt.plot(x, densities[test_min_r:test_max_r])
     plt.xlabel('k')
     plt.ylabel('Density')
     plt.savefig('densities.png')
@@ -50,8 +51,8 @@ def show(densities, net, total_costs):
 
     for i in [3, 8, 14]:
         G = nx.from_numpy_matrix(net[i])
-        #layout = nx.circular_layout(G)
         layout = nx.shell_layout(G)
+        plt.title(f'k = {i}')
         nx.draw(G, layout, with_labels=True)
         edge_labels = nx.get_edge_attributes(G, 'weight')
         nx.draw_networkx_edge_labels(G, pos=layout, edge_labels=edge_labels)
