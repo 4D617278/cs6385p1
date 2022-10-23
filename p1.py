@@ -40,6 +40,7 @@ def min_net(costs, demands, net):
 # module 3
 def show(densities, net, total_costs):
     x = np.arange(test_min_r, test_max_r)
+
     plt.plot(x, total_costs[test_min_r:test_max_r])
     plt.xlabel('k')
     plt.ylabel('Total Cost')
@@ -87,9 +88,6 @@ def main():
         for i in range(N):
             indices = rng.choice(rand_set[:i] + rand_set[i + 1:], r, replace=False)
             costs[i][indices] = 1
-
-        #print(costs)
-        #print(demands)
 
         min_net(costs, demands, net[r])
         total_costs[r] = np.sum(demands * costs)
