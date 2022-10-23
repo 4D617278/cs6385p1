@@ -10,27 +10,32 @@ test_max_r = 14 + 1
 
 # module 2
 def min_net(costs, demands, net):
-    min_paths = np.empty((N, N), dtype=object)
+    min_paths = np.empty((N, N), dtype=int)
 
     for i in range(N):
-        for i2 in range(N):
-            min_paths[i][i2] = []
+        min_paths[i] = np.arange(N)
 
     for i in range(N): 
         for i2 in range(N):
             for i3 in range(N):
                 min_cost_i = costs[i2][i] + costs[i][i3]
                 if costs[i2][i3] > min_cost_i:
-                    min_paths[i2][i3] = min_paths[i2][i] + [i] + min_paths[i][i3]
+                    min_paths[i2][i3] = min_paths[i2][i]
                     costs[i2][i3] = min_cost_i
+
+    #print(min_paths)
+    #print(costs)
 
     for i in range(N):
         for i2 in range(N):
-            min_path = min_paths[i][i2]
-            min_path.append(i2)
-            for i3 in range(len(min_path) - 1): 
-                edge = (min_path[i3], min_path[i3 + 1])
-                net[edge] += demands[i][i2]
+            edge_src = i
+            edge_dst = min_paths[i][i2]
+
+            while edge_dst != i2:
+                net[edge_src][edge_dst] += demands[i][i2]
+                edge_src = edge_dst
+                edge_dst = min_paths[edge_dst][i2]
+            net[edge_src][edge_dst] += demands[i][i2]
 
 # module 3
 def show(densities, net, total_costs):
