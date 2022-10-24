@@ -75,7 +75,7 @@ def main():
     # module 1
     for i in range(len(id)):
         for i2 in range(len(id)):
-            demands[i][i2] = max(int(id[i]) - int(id[i2]), 0)
+            demands[i][i2] = abs(int(id[i]) - int(id[i2]))
 
     rng = np.random.default_rng()
     rand_set = tuple(range(N))
