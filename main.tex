@@ -1,0 +1,265 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+
+\title{CS 6385 Project 1}
+\author{bxl190001 }
+\date{October 2022}
+
+\setlength{\parindent}{0cm}
+\begin{document}
+
+\maketitle
+\section{Program}
+\subsection{Module 1}
+\subsubsection{Initialization}
+\begin{verbatim}
+    demands = np.empty((N, N), dtype=int)
+    costs = np.full((N, N), 100)
+    net = np.zeros((N, N, N), dtype=int)
+    total_costs = np.zeros(N, dtype=int)
+    densities = np.zeros(N)
+\end{verbatim}
+Numpy arrays are used for efficiency. Densities is the only matrix with floats to store the results of floating point division. All of the weights of costs are initialized to 100 for simplicity. The net tensor represents multiple minimum cost networks, one for each value of k. The total\_costs and densities array represent total costs and densities for each value of k. The size of net, total\_costs, and densities is N for simplicity since the maximum value of k is N.
+    
+\subsubsection{Demands}
+\begin{verbatim}
+for i in range(len(id)):
+    for i2 in range(len(id)):
+        demands[i][i2] = abs(int(id[i]) - int(id[i2]))
+\end{verbatim}
+Each demand is set to the absolute value of the difference so all demands are non-negative and demands for paths between the same nodes are 0.
+            
+\subsubsection{Costs}
+\begin{verbatim}
+    rng = np.random.default_rng()
+    rand_set = tuple(range(N))
+    
+    for r in range(test_min_r, test_max_r):
+        costs.fill(100)
+        np.fill_diagonal(costs, 0)
+        for i in range(N):
+            indices = rng.choice(rand_set[:i] + rand_set[i + 1:], r, replace=False)
+            costs[i][indices] = 1
+\end{verbatim}
+Costs is reset every iteration of r because it is modified in the construction of the minimum cost network. The diagonals of the cost matrix is set to 0 because the cost from every node to itself is 0. The random number generator is seeded with a different value on each execution and each index generated is distinct (replace=False) and not equal to the row index (rand\_set[:i] + rand\_set[i + 1:]).
+\subsection{Module 2}
+\subsubsection{Minimum Cost Network}
+See Algorithm.
+
+\subsubsection{Calculations}
+\begin{verbatim}
+num_dir_edges = N * (N - 1)
+total_costs[r] = np.sum(demands * costs)
+densities[r] = float(np.count_nonzero(net[r])) / num_dir_edges
+\end{verbatim}
+The demands and costs matrix are multiplied element wise and summed to get the total cost. The number of nonzero edges is casted to a float to ensure floating point division.
+\subsection{Module 3}
+\subsubsection{Total Cost and Density Graph}
+\begin{verbatim}
+def show(densities, net, total_costs):
+    x = np.arange(test_min_r, test_max_r)
+     
+    plt.plot(x, total_costs[test_min_r:test_max_r])
+    plt.xlabel('k')
+    plt.ylabel('Total Cost')
+    plt.savefig('costs.png')
+    plt.clf()
+    
+    plt.plot(x, densities[test_min_r:test_max_r])
+    plt.xlabel('k')
+    plt.ylabel('Density')
+    plt.savefig('densities.png')
+    plt.clf()
+\end{verbatim}
+Only values from 3 to 14 are plotted. The plot is cleared each time with plot.clf().
+
+\subsubsection{Network Graph}
+\begin{verbatim}
+plt.figure(figsize=(20, 20))
+
+for i in [3, 8, 14]:
+    G = nx.from_numpy_matrix(net[i])
+    layout = nx.shell_layout(G)
+    plt.title(f’k = {i}’)
+    nx.draw(G, layout, with_labels=True)
+    edge_labels = nx.get_edge_attributes(G, ’weight’)
+    nx.draw_networkx_edge_labels(G, pos=layout, edge_labels=edge_labels)
+    plt.savefig(f’graph{i}.png’)
+    plt.clf()
+\end{verbatim}
+The figure size is increased and a shell layout is used to improve visibility.
+
+\section{Algorithm}
+\subsection{Definition}
+\begin{verbatim}
+def min_net(costs, demands, net):
+\end{verbatim}
+Costs is a matrix with dimensions N x N that represents the unit cost for a given capacity. Demands is a matrix with dimensions N x N that represents a lower bound on the flow between two nodes. Net is a matrix with dimensions N x N which represents the resulting minimum cost network.
+
+\subsection{Initialization}
+\begin{verbatim}
+min_paths = np.empty((N, N), dtype=int)
+
+for i in range(N):
+    min_paths[i] = np.arange(N)
+\end{verbatim}
+A numpy array is used to store the minimum cost paths to use for assigning capacities to the minimum cost network. Each element is initialized to the corresponding column index which represents the destination of the edge because the initial shortest path known is directly from the source node to the destination node.
+
+\subsection{All Shortest Paths}
+\begin{verbatim}
+for i in range(N): 
+    for i2 in range(N):
+        for i3 in range(N):
+            min_cost_i = costs[i2][i] + costs[i][i3]
+            if costs[i2][i3] > min_cost_i:
+                min_paths[i2][i3] = min_paths[i2][i]
+                costs[i2][i3] = min_cost_i
+\end{verbatim}
+The all shortest paths algorithm is used to convert the costs into the minimum costs matrix for any path between two nodes and to construct the minimum paths matrix. The minimum paths matrix is a tree and only needs to store the next node because of the optimal substructure of a minimum path.
+
+\subsection{Minimum Cost Network}
+\begin{verbatim}
+for i in range(N):
+    for i2 in range(N):
+        edge_src = i
+        edge_dst = min_paths[i][i2]
+
+        while edge_dst != i2:
+            net[edge_src][edge_dst] += demands[i][i2]
+            edge_src = edge_dst
+            edge_dst = min_paths[edge_dst][i2]
+        net[edge_src][edge_dst] += demands[i][i2]
+\end{verbatim}
+The minimum cost network is constructed by using the minimum paths and demands matrix. The edges in all minimum paths between nodes are used to set the weights of all edges in the minimum cost network. The weight of an edge in the minimum cost network is the sum of the demands of all of the minimum cost paths that use the edge.
+
+\section{Results}
+\centerline{\includegraphics[]{costs.png}}
+\centerline{\includegraphics[]{densities.png}}
+\centerline{\includegraphics[scale=0.5]{graph3.png}}
+\centerline{\includegraphics[scale=0.5]{graph8.png}}
+\centerline{\includegraphics[scale=0.5]{graph14.png}}
+
+\section{Explanation}
+The total cost generally decreases with k because k determines the number of edges out of a node with a weight of 1 as opposed to 100. More edges with smaller weights will generally decrease the cost. \\
+
+The density generally increases with k because k determines the number of edges out of a node with a weight of 1 as opposed to 100. More edges with smaller weights increases the number of edges that will be used in the minimum cost network. \\
+
+The visual representation of the graphs confirms the increase in density with respect to k and also the decrease in total cost with respect to k. More edges can be seen as k increases and the weights of each edge are on average lower as k increases. \\
+
+\section{Instructions}
+Uses python 3.10.8, numpy 1.23.4, matplotlib 3.5.2, and networkx 2.8.7. Tested on Asahi Linux aarch64. \\
+
+To run the program, write the source code to a file and execute \\
+
+\$ python3 \textless filename\textgreater \\
+
+where filename is the name of the file.
+
+\section{Appendix}
+\subsection{Notes}
+The UTD ID was permuted for privacy reasons.
+\subsection{Source Code}
+\begin{verbatim}
+#!/usr/bin/env python3
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+
+N = 21 # number of nodes
+id = '648274120264827412026'
+test_min_r = 3
+test_max_r = 14 + 1
+
+# module 2
+def min_net(costs, demands, net):
+    min_paths = np.empty((N, N), dtype=int)
+
+    for i in range(N):
+        min_paths[i] = np.arange(N)
+
+    for i in range(N): 
+        for i2 in range(N):
+            for i3 in range(N):
+                min_cost_i = costs[i2][i] + costs[i][i3]
+                if costs[i2][i3] > min_cost_i:
+                    min_paths[i2][i3] = min_paths[i2][i]
+                    costs[i2][i3] = min_cost_i
+
+    #print(min_paths)
+    #print(costs)
+
+    for i in range(N):
+        for i2 in range(N):
+            edge_src = i
+            edge_dst = min_paths[i][i2]
+
+            while edge_dst != i2:
+                net[edge_src][edge_dst] += demands[i][i2]
+                edge_src = edge_dst
+                edge_dst = min_paths[edge_dst][i2]
+            net[edge_src][edge_dst] += demands[i][i2]
+
+# module 3
+def show(densities, net, total_costs):
+    x = np.arange(test_min_r, test_max_r)
+    
+    plt.plot(x, total_costs[test_min_r:test_max_r])
+    plt.xlabel('k')
+    plt.ylabel('Total Cost')
+    plt.savefig('costs.png')
+    plt.clf()
+
+    plt.plot(x, densities[test_min_r:test_max_r])
+    plt.xlabel('k')
+    plt.ylabel('Density')
+    plt.savefig('densities.png')
+    plt.clf()
+
+    plt.figure(figsize=(20, 20))
+
+    for i in [3, 8, 14]:
+        G = nx.from_numpy_matrix(net[i])
+        layout = nx.shell_layout(G)
+        plt.title(f'k = {i}')
+        nx.draw(G, layout, with_labels=True)
+        edge_labels = nx.get_edge_attributes(G, 'weight')
+        nx.draw_networkx_edge_labels(G, pos=layout, edge_labels=edge_labels)
+        plt.savefig(f'graph{i}.png')
+        plt.clf()
+
+def main():
+    demands = np.empty((N, N), dtype=int)
+    costs = np.full((N, N), 100)
+    net = np.zeros((N, N, N), dtype=int)
+    total_costs = np.zeros(N, dtype=int)
+    densities = np.zeros(N)
+
+    # module 1
+    for i in range(len(id)):
+        for i2 in range(len(id)):
+            demands[i][i2] = abs(int(id[i]) - int(id[i2]))
+
+    rng = np.random.default_rng()
+    rand_set = tuple(range(N))
+    num_dir_edges = N * (N - 1)
+
+    for r in range(test_min_r, test_max_r):
+        costs.fill(100)
+        np.fill_diagonal(costs, 0)
+
+        for i in range(N):
+            indices = rng.choice(rand_set[:i] + rand_set[i + 1:], r, replace=False)
+            costs[i][indices] = 1
+
+        min_net(costs, demands, net[r])
+        total_costs[r] = np.sum(demands * costs)
+        densities[r] =  float(np.count_nonzero(net[r])) / num_dir_edges
+
+    show(densities, net, total_costs)
+
+if __name__ == '__main__':
+    main()
+\end{verbatim}
+
+\end{document}
